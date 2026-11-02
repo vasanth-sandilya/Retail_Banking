@@ -25,6 +25,7 @@
   <nav class="tabs subtabs" id="subtabs" hidden>
     <button data-view="dashboard">Dashboard</button>
     <button data-view="kiosk">Issue Token</button>
+    <button data-view="appointments">Appointments</button>
     <button data-view="counters">Counters</button>
     <button data-view="requests">Requests</button>
     <button data-view="forecast">Footfall Forecast</button>
@@ -45,6 +46,7 @@
           <p class="muted">For branch staff. Run the queue and keep counters moving.</p>
           <ul>
             <li>Live dashboard and counter console</li>
+            <li>Appointments and no-show prediction</li>
             <li>Customer requests and forms</li>
             <li>Footfall forecast and display board</li>
           </ul>
@@ -57,6 +59,7 @@
           <p class="muted">For customers. Voice and chat help in their own language.</p>
           <ul>
             <li>Balance queries</li>
+            <li>Book and check in for appointments</li>
             <li>Guided form filling</li>
             <li>Service requests and queue tokens</li>
           </ul>
@@ -134,6 +137,73 @@
         <div class="card">
           <p id="asIdleMsg"></p>
           <button type="button" class="btn primary wide" id="asIdleBtn"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- APPOINTMENTS -->
+    <section id="view-appointments" class="view">
+      <div class="section-head">
+        <h1>Appointments · <span id="apDate"></span></h1>
+        <div class="actions">
+          <button class="btn ghost" id="apPrev">&larr; Previous day</button>
+          <button class="btn ghost" id="apToday">Today</button>
+          <button class="btn ghost" id="apNext">Next day &rarr;</button>
+        </div>
+      </div>
+      <div class="kpis" id="apKpis"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>RM and specialist calendar</h2><span class="muted small">Percentages show no-show risk. Staff only.</span></div>
+          <div class="table-wrap"><table class="ap-grid" id="apGrid"></table></div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h2>Selected appointment</h2></div>
+            <div id="apDetail"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Call to confirm</h2><span class="muted small">Try this before overbooking</span></div>
+            <ul class="ap-calls" id="apCalls"></ul>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Book a slot</h2></div>
+            <form id="apForm" class="ap-form">
+              <div class="field"><label class="lbl" for="apType">Meeting with</label>
+                <select id="apType">
+                  <option value="rm">Relationship Manager</option>
+                  <option value="loan">Loan Specialist</option>
+                  <option value="wealth">Wealth Advisor</option>
+                  <option value="forex">Forex Specialist</option>
+                </select></div>
+              <div class="field"><label class="lbl" for="apSegment">Customer type</label>
+                <select id="apSegment">
+                  <option value="regular">Regular</option>
+                  <option value="senior">Senior Citizen</option>
+                  <option value="disabled">Differently Abled</option>
+                </select></div>
+              <div class="field"><label class="lbl" for="apSlot">Slot on the selected day</label><select id="apSlot"></select></div>
+              <div class="field"><label class="lbl" for="apName">Customer name</label><input id="apName" maxlength="40" required></div>
+              <div class="field"><label class="lbl" for="apMobile">Mobile (optional)</label><input id="apMobile" inputmode="numeric" maxlength="12"></div>
+              <div class="field"><label class="lbl" for="apChannel">Booked by</label>
+                <select id="apChannel">
+                  <option value="branch">Branch</option>
+                  <option value="phone">Phone</option>
+                  <option value="app">App</option>
+                  <option value="kiosk">Kiosk</option>
+                </select></div>
+              <button class="btn primary wide" type="submit">Book appointment</button>
+              <p class="err" id="apErr"></p>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Overbooking policy</h2></div>
+            <label class="ap-toggle"><input type="checkbox" id="apEnabled"> Allow overbooking</label>
+            <label class="lbl" for="apLevel">How readily to overbook</label>
+            <select id="apLevel"></select>
+            <p class="muted small">Used only when a day is full. Limit of 2 per advisor per day, never next to each other, and never with senior or differently abled customers.</p>
+            <p class="muted small" id="apModel"></p>
+          </div>
         </div>
       </div>
     </section>
@@ -248,5 +318,6 @@
   <div class="toast" id="toast"></div>
   <script src="app.js"></script>
   <script src="assistant.js"></script>
+  <script src="appointments.js"></script>
 </body>
 </html>

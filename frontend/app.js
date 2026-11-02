@@ -40,7 +40,7 @@ const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2
 const hourLabel = (h) => `${h > 12 ? h - 12 : h}${h >= 12 ? "pm" : "am"}`;
 
 // ---------------------------------------------------------------- navigation
-const STAFF_VIEWS = ["dashboard", "kiosk", "counters", "requests", "forecast", "display"];
+const STAFF_VIEWS = ["dashboard", "kiosk", "appointments", "counters", "requests", "forecast", "display"];
 // Customer devices open /?mode=kiosk: assistant only, larger type, no navigation
 const LOCKED = new URLSearchParams(location.search).get("mode") === "kiosk";
 
@@ -73,6 +73,10 @@ function showView(v) {
 async function refresh() {
   try {
     if (currentView === "assistant") return;
+    if (currentView === "appointments") {
+      await refreshAppointments();
+      return;
+    }
     if (currentView === "requests") {
       await refreshRequests();
       return;

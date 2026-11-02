@@ -47,6 +47,8 @@ FORMS = {
         "fields": [("name", "text"), ("mobile", "mobile"), ("acct_type", "acct_type"),
                    ("address", "text"), ("pincode", "pincode"), ("proof", "proof")],
     },
+    # Reached through the appointment flow, not the forms menu. Submits to the appointment book.
+    "appointment": {"service": None, "auth": False, "internal": True, "fields": [("name", "text"), ("mobile", "mobile")]},
 }
 CHOICES = {
     "proof": ["aadhaar", "passport", "voter", "driving"],
@@ -67,6 +69,8 @@ SCRIPTS = [((0x0900, 0x097F), ["hi", "mr"]), ((0x0980, 0x09FF), ["bn"]), ((0x0B8
 CARD_NUMBER = re.compile(r"(?<!\d)(?:\d[ -]?){12,19}(?!\d)")
 SECRET_WITH_DIGITS = re.compile(r"\b(?:pin(?!\s*code)|otp|cvv)\b\D{0,12}\d{3,6}\b", re.I)
 REFERENCE = re.compile(r"\b(SR|FM)[- ]?(\d{4})\b", re.I)
+APPOINTMENT_REF = re.compile(r"\bAP[- ]?([2-9A-HJ-NP-Z]{4})\b", re.I)
+TIME_OF_DAY = re.compile(r"\b(\d{1,2})[:.](\d{2})\b")
 TOKEN_NO = re.compile(r"\b([CSLWF])[- ]?(\d{3})\b", re.I)
 
 
@@ -89,7 +93,7 @@ class CoreBanking:
 class ClaudeIntent:
     """Optional fallback classifier. Unavailable means keywords only, never an error."""
     INTENTS = ["balance", "card_block", "chequebook", "statement", "complaint", "deposit_form", "address_form",
-               "open_form", "form", "request", "wait", "token", "human", "hours", "docs", "unknown"]
+               "open_form", "form", "request", "wait", "token", "appointment", "human", "hours", "docs", "unknown"]
     SYSTEM = (
         "You route messages from customers at an Indian retail bank branch kiosk. They may write in English, "
         "Hindi, Tamil, Telugu, Kannada, Malayalam, Bengali, Marathi, or a romanised or mixed form of these. "
@@ -180,8 +184,9 @@ def yes_or_no(text):
 
 
 class Assistant:
-    def __init__(self, engine):
+    def __init__(self, engine, book=None):
         self.engine = engine
+        self.book = book
         self.core = CoreBanking()
         self.claude = ClaudeIntent()
         self.lock = threading.RLock()
@@ -204,7 +209,8 @@ class Assistant:
         return {"label": self.t(s, key), "action": action}
 
     def _menu(self, s):
-        return [self._action(s, "a_" + k, "intent:" + k) for k in ("balance", "token", "form", "request", "wait", "human")]
+        keys = ("balance", "token", "appointment", "form", "request", "wait", "human")
+        return [self._action(s, "a_" + k, "intent:" + k) for k in keys if k != "appointment" or self.book]
 
     def _home(self, s, *texts):
         s["flow"], s["data"] = None, {}
@@ -302,8 +308,10 @@ class Assistant:
             return self._ask_segment(s, val)
         if kind == "seg" and s["flow"] == "token_segment" and val in ("regular", "senior", "disabled"):
             return self._finish_token(s, val)
-        if kind == "form" and val in FORMS:
+        if kind == "form" and val in FORMS and not FORMS[val].get("internal"):
             return self._start_form(s, val)
+        if self.book and kind in ("appt", "apptseg", "apptday", "appttime", "checkin", "apptcancel"):
+            return self._appointment_action(s, kind, val)
         if kind == "req" and val in REQUESTS:
             return self._start_request(s, val)
         if kind == "choice" and s["flow"] == "form_field":
@@ -356,12 +364,21 @@ class Assistant:
                     return self._finish_token(s, seg)
             if yes_or_no(text) == "no":
                 return self._finish_token(s, "regular")
+        if self.book and flow and flow.startswith("appt_"):
+            action = self._appointment_choice(s, text)
+            if action:
+                reply = self._on_action(s, action)
+                reply["messages"] = [{"text": p} for p in prefix] + reply["messages"]
+                return reply
 
         reply = self._understand(s, text)
         reply["messages"] = [{"text": p} for p in prefix] + reply["messages"]
         return reply
 
     def _understand(self, s, text):
+        appt = APPOINTMENT_REF.search(text)
+        if appt and self.book:
+            return self._track_appointment(s, "AP-" + appt.group(1).upper())
         ref = REFERENCE.search(text)
         if ref:
             return self._track_ref(s, f"{ref.group(1).upper()}-{ref.group(2)}")
@@ -404,13 +421,17 @@ class Assistant:
             return self._start_form(s, key)
         if intent == "form":
             return self._reply(s, self.t(s, "form_choose"), actions=[
-                self._action(s, "form_" + k, "form:" + k) for k in FORMS] + [self._cancel_action(s)])
+                self._action(s, "form_" + k, "form:" + k) for k, f in FORMS.items() if not f.get("internal")] + [self._cancel_action(s)])
         if intent == "request":
             return self._reply(s, self.t(s, "req_choose"), actions=[
                 self._action(s, "req_" + k, "req:" + k) for k in REQUESTS] + [self._cancel_action(s)])
         if intent == "token":
             return self._reply(s, self.t(s, "token_choose"), actions=[
                 self._action(s, "svc_" + k, "svc:" + k) for k in TOKEN_SERVICES] + [self._cancel_action(s)])
+        if intent == "appointment" and self.book:
+            s["flow"] = "appt_type"
+            return self._reply(s, self.t(s, "appt_type_q"), actions=[
+                self._action(s, "appt_" + k, "appt:" + k) for k in ("rm", "loan", "wealth", "forex")] + [self._cancel_action(s)])
         if intent == "wait":
             snap = self.engine.snapshot()["kpi"]
             info = self.t(s, "wait_info", waiting=snap["waiting"], counters=snap["open_counters"])
@@ -610,6 +631,8 @@ class Assistant:
 
     def _submit_form(self, s):
         d = s["data"]
+        if d["form"] == "appointment":
+            return self._submit_appointment(s)
         form = FORMS[d["form"]]
         ref = self._new_ref("FM")
         en = lambda v, k: T["c_" + v][0] if k in CHOICES else v
@@ -619,6 +642,101 @@ class Assistant:
             "urgent": False, "token": "", "created": datetime.now().strftime("%H:%M"),
         }
         return self._ask_segment(s, form["service"], ref=ref, done="form")
+
+    # -- appointments -------------------------------------------------------
+    # Replies here never include the no-show risk: that is for staff only.
+    def _day_label(self, s, day):
+        d = datetime.fromisoformat(day)
+        return f"{self.t(s, 'day_%d' % d.weekday())} {d.day}/{d.month}"
+
+    def _ask_day(self, s, *before):
+        s["flow"] = "appt_day"
+        days = self.book.open_days()
+        return self._reply(s, *before, self.t(s, "appt_day_q"), actions=[
+            {"label": self._day_label(s, day), "action": "apptday:" + day} for day in days] + [self._cancel_action(s)])
+
+    def _appointment_action(self, s, kind, val):
+        d = s["data"]
+        if kind == "appt" and val in ("rm", "loan", "wealth", "forex"):
+            s["flow"], s["data"] = "appt_segment", {"type": val}
+            return self._reply(s, self.t(s, "appt_priority"), actions=[
+                self._action(s, "seg_" + k, "apptseg:" + k) for k in ("regular", "senior", "disabled")] + [self._cancel_action(s)])
+        if kind == "apptseg" and s["flow"] == "appt_segment" and val in ("regular", "senior", "disabled"):
+            d["segment"] = val
+            return self._ask_day(s)
+        if kind == "apptday" and s["flow"] == "appt_day" and val in self.book.open_days():
+            d["slots"] = self.book.available(d["type"], val, d["segment"])
+            if not d["slots"]:
+                return self._ask_day(s, self.t(s, "appt_none"))
+            d["date"], s["flow"] = val, "appt_time"
+            return self._reply(s, self.t(s, "appt_time_q"), actions=[
+                {"label": x["time"], "action": "appttime:" + x["time"]} for x in d["slots"][:8]] + [self._cancel_action(s)])
+        if kind == "appttime" and s["flow"] == "appt_time" and any(x["time"] == val for x in d["slots"]):
+            s["flow"] = "form_field"
+            s["data"] = {"form": "appointment", "values": {}, "step": 0,
+                         "appt": {"type": d["type"], "segment": d["segment"], "date": d["date"], "time": val}}
+            return self._ask_field(s)
+        if kind == "checkin":
+            return self._appointment_check_in(s, val)
+        if kind == "apptcancel":
+            try:
+                self.book.cancel(val)
+            except ValueError:
+                return self._home(s, self.t(s, "ref_unknown"))
+            return self._home(s, self.t(s, "appt_cancelled", ref=val))
+        return self._home(s, self.t(s, "not_understood"))
+
+    def _appointment_choice(self, s, text):
+        """Turns a spoken or typed answer into the matching button's action."""
+        low = text.casefold()
+        if s["flow"] == "appt_type":
+            return next((f"appt:{k}" for k in ("rm", "loan", "wealth", "forex") if self.t(s, "appt_" + k).casefold() in low), None)
+        if s["flow"] == "appt_segment":
+            hit = next((k for k in ("senior", "disabled", "regular") if self.t(s, "seg_" + k).casefold() in low), None)
+            hit = hit or ("regular" if yes_or_no(text) == "no" else None)
+            return f"apptseg:{hit}" if hit else None
+        if s["flow"] == "appt_day":
+            for day in self.book.open_days():
+                if self.t(s, "day_%d" % datetime.fromisoformat(day).weekday()).casefold() in low:
+                    return "apptday:" + day
+        if s["flow"] == "appt_time":
+            m = TIME_OF_DAY.search(text)
+            return f"appttime:{int(m.group(1)):02d}:{m.group(2)}" if m else None
+        return None
+
+    def _submit_appointment(self, s):
+        d = s["data"]
+        a, v = d["appt"], d["values"]
+        lang = next(l for l in LANGUAGES if l["code"] == s["lang"])
+        try:
+            booked = self.book.create(a["type"], a["date"], a["time"], v["name"], v["mobile"], a["segment"], "kiosk", lang["name"])
+        except ValueError:
+            s["data"] = {"type": a["type"], "segment": a["segment"]}
+            return self._ask_day(s, self.t(s, "appt_none"))
+        day = self._day_label(s, a["date"])
+        side = {"type": "appointment", "ref": booked["ref"], "item": self.t(s, "appt_" + a["type"]), "when": f"{day} · {a['time']}"}
+        s["flow"], s["data"] = None, {}
+        return self._reply(s, self.t(s, "appt_done", day=day, time=a["time"], ref=booked["ref"]), self.t(s, "menu"),
+                           actions=self._menu(s), side=side)
+
+    def _track_appointment(self, s, ref):
+        a = self.book.items.get(ref)
+        if not a or a["status"] != "booked":
+            return self._home(s, self.t(s, "ref_unknown"))
+        actions = [self._action(s, "a_cancel_appt", "apptcancel:" + ref), self._action(s, "a_cancel", "cancel")]
+        if a["date"] == self.book.clock().date().isoformat():
+            actions.insert(0, self._action(s, "a_checkin", "checkin:" + ref))
+        return self._reply(s, self.t(s, "appt_info", ref=ref, day=self._day_label(s, a["date"]), time=a["time"]), actions=actions)
+
+    def _appointment_check_in(self, s, ref):
+        try:
+            a, t = self.book.check_in(ref)
+        except ValueError:
+            return self._home(s, self.t(s, "ref_unknown"))
+        s["flow"], s["data"] = None, {}
+        side = self._token_side(s, t, t["service"])
+        return self._reply(s, self.t(s, "appt_checked_in", token=t["token"], counter=t["counter_name"]), self.t(s, "menu"),
+                           actions=self._menu(s), side=side)
 
     # -- service requests ---------------------------------------------------
     def _start_request(self, s, key, *before):

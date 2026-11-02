@@ -16,6 +16,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # embeddable Python omits the script folder
+from appointments import AppointmentBook, NoShowModel
 from assistant import Assistant, client_meta
 
 PORT = int(os.environ.get("PORT", 8000))
@@ -45,6 +46,7 @@ SERVICES = {
     "forex":           {"name": "Foreign Exchange",        "category": "FOREX",  "prefix": "F", "avg_minutes": 12},
     "locker":          {"name": "Safe Deposit Locker",     "category": "SERVICE","prefix": "S", "avg_minutes": 10},
     "general_help":    {"name": "General Help",            "category": "SERVICE","prefix": "S", "avg_minutes": 5},
+    "rm_meeting":      {"name": "Relationship Manager",    "category": "RM",     "prefix": "R", "avg_minutes": 30},
 }
 
 # Customer segments add priority points (higher = served earlier among routed queue)
@@ -68,6 +70,8 @@ DEFAULT_COUNTERS = [
     {"id": 6, "name": "Desk A",    "role": "Loan Specialist",   "staff": "V. Rao",     "skills": ["LOAN"],             "primary": "LOAN"},
     {"id": 7, "name": "Desk B",    "role": "Wealth Advisor",    "staff": "N. Kapoor",  "skills": ["WEALTH", "LOAN"],   "primary": "WEALTH"},
     {"id": 8, "name": "Desk C",    "role": "Forex Specialist",  "staff": "J. Thomas",  "skills": ["FOREX", "SERVICE"], "primary": "FOREX"},
+    {"id": 9, "name": "Desk D",    "role": "Relationship Manager", "staff": "R. Menon", "skills": ["RM"],              "primary": "RM"},
+    {"id": 10, "name": "Desk E",   "role": "Relationship Manager", "staff": "S. Bose",  "skills": ["RM"],              "primary": "RM"},
 ]
 
 SLA_MINUTES = 15  # target max wait
@@ -219,6 +223,7 @@ class QueueEngine:
         self.seq = {p: 0 for p in {s["prefix"] for s in SERVICES.values()}}
         self.events = []       # recent activity log
         self.day = date.today()
+        self.on_finish = None  # called with (token, outcome) when a customer is finished
 
     # -- helpers ------------------------------------------------------------
     def _now(self):
@@ -275,7 +280,7 @@ class QueueEngine:
         return best[2], best[1], reasons
 
     # -- public API ---------------------------------------------------------
-    def issue_token(self, service_key, segment="regular", name="", mobile="", language="", ref=""):
+    def issue_token(self, service_key, segment="regular", name="", mobile="", language="", ref="", counter_id=None):
         if service_key not in SERVICES:
             raise ValueError("Unknown service")
         if segment not in SEGMENTS:
@@ -285,6 +290,10 @@ class QueueEngine:
             counter, backlog, reasons = self.route(service_key, segment)
             if counter is None:
                 raise ValueError(f"No open counter currently handles {svc['category'].title()} services")
+            # Appointments go to the customer's own advisor while that desk is open
+            pinned = next((c for c in self.counters if c["id"] == counter_id and c["status"] == "open"), None)
+            if pinned:
+                counter, backlog = pinned, self._counter_backlog_minutes(pinned)
             prefix = svc["prefix"]
             self.seq[prefix] += 1
             token_no = f"{prefix}{self.seq[prefix]:03d}"
@@ -304,6 +313,7 @@ class QueueEngine:
                 "mobile": mobile.strip()[-4:],  # store only last 4 digits
                 "language": language,           # customer's language, shown to staff
                 "ref": ref,                     # assistant form or request behind this token
+                "pinned": bool(pinned),         # idle counters must not take this customer
                 "counter_id": counter["id"],
                 "counter_name": counter["name"],
                 "status": "waiting",
@@ -329,7 +339,7 @@ class QueueEngine:
             now = self._now()
             # Own queue first; otherwise steal the best eligible token from an overloaded counter
             own = [t for t in self._waiting() if t["counter_id"] == c["id"]]
-            pool = own or [t for t in self._waiting() if t["category"] in c["skills"]]
+            pool = own or [t for t in self._waiting() if t["category"] in c["skills"] and not t["pinned"]]
             if not pool:
                 self._log(f"{c['name']}: no customers waiting")
                 return None
@@ -359,6 +369,8 @@ class QueueEngine:
             c["busy_minutes"] += (now - datetime.fromisoformat(t["called_at"])).total_seconds() / 60
         c["current"] = None
         self._log(f"{c['name']}: {t['token']} {'completed' if outcome == 'served' else 'marked no-show'}")
+        if self.on_finish:
+            self.on_finish(t, outcome)
         return t
 
     def transfer(self, token_no, service_key):
@@ -503,7 +515,10 @@ class QueueEngine:
 # ---------------------------------------------------------------------------
 MODEL = FootfallModel()
 ENGINE = QueueEngine(MODEL)
-ASSIST = Assistant(ENGINE)
+NOSHOW = NoShowModel()
+BOOK = AppointmentBook(ENGINE, NOSHOW)
+BOOK.seed_demo()
+ASSIST = Assistant(ENGINE, BOOK)
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -557,6 +572,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(client_meta())
             if p == "/api/requests":
                 return self._json(ASSIST.staff_view())
+            if p == "/api/appointments":
+                return self._json(BOOK.day_view(q["date"][0] if "date" in q else date.today().isoformat()))
+            if p == "/api/appointments/slots":
+                return self._json({"slots": BOOK.available(q["type"][0], q["date"][0], q.get("segment", ["regular"])[0])})
         except Exception as e:  # noqa: BLE001
             return self._json({"error": str(e)}, 400)
         if p.startswith("/api/"):
@@ -593,13 +612,28 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(ASSIST.end(b.get("session", "")))
             if p.startswith("/api/requests/"):
                 return self._json(ASSIST.set_status(p.strip("/").split("/")[2], b.get("status")))
+            if p == "/api/appointments":
+                return self._json(BOOK.create(b.get("type"), b.get("date", ""), b.get("time"), b.get("name"), b.get("mobile", ""),
+                                              b.get("segment", "regular"), b.get("channel", "branch")))
+            if p == "/api/appointments/policy":
+                return self._json(BOOK.set_policy(b.get("enabled"), b.get("level")))
+            if p.startswith("/api/appointments/"):
+                parts = p.strip("/").split("/")  # api appointments {ref} {action}
+                action = {"confirm": BOOK.confirm, "cancel": BOOK.cancel, "complete": BOOK.complete,
+                          "no_show": BOOK.mark_no_show}.get(parts[3])
+                if parts[3] == "checkin":
+                    return self._json(BOOK.check_in(parts[2])[0])
+                if action:
+                    return self._json(action(parts[2]))
             if p == "/api/demo":
                 ENGINE.seed_demo()
                 return self._json({"ok": True})
             if p == "/api/reset":
                 with ENGINE.lock:
                     ENGINE.__init__(MODEL)
-                ASSIST.__init__(ENGINE)
+                BOOK.__init__(ENGINE, NOSHOW)
+                BOOK.seed_demo()
+                ASSIST.__init__(ENGINE, BOOK)
                 return self._json({"ok": True})
             return self._json({"error": "Not found"}, 404)
         except ValueError as e:

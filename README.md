@@ -61,6 +61,20 @@ The assistant runs on keywords with no dependencies. To also handle phrasing the
 - **Have translations reviewed:** native speakers and the bank's compliance team should approve `assistant_i18n.py`.
 - **Install voices:** kiosk devices need a text-to-speech voice for each language offered. On Windows, Microsoft Edge offers online voices, confirmed working for Tamil; these need an internet connection.
 
+## Appointments
+
+Book relationship managers and specialists, predict no-shows, and overbook carefully. Staff use **BranchFlow > Appointments**. Customers book, check in or cancel at the **Kiosk** in all 8 languages, using the reference they are given.
+
+| Area | What it does |
+|---|---|
+| **Booking** | 30-minute slots with RMs and loan, wealth and forex specialists. Checking in issues a queue token for the customer's own advisor's desk, and finishing that token completes the appointment. |
+| **No-show prediction** | Logistic regression using lead time, first visit, past no-shows, confirmation, slot, day and booking channel. Each score lists the factors behind it. |
+| **Fairness** | The model never sees name, language, age, disability or customer segment. Risk scores are shown to staff only. |
+| **Overbooking** | Applies when a day has no free slot and an existing booking is likely enough to be missed: 25% (Aggressive), 33% (Balanced) or 50% (Cautious). Limited to 2 per advisor per day, never in adjacent slots, and never with senior or differently abled customers. |
+| **Before overbooking** | Unconfirmed high-risk appointments appear on a call list, because a confirmation can save the slot. |
+
+The history is synthetic, so the model's accuracy says nothing about real customers. To use real data, replace `NoShowModel._generate_history()` in `backend/appointments.py`, then check accuracy and fairness across customer groups before relying on it. Two customers can still arrive for an overbooked slot, so branches should agree who is seen first and how the second is looked after.
+
 ### Tests
 
 ```

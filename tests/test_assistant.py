@@ -254,6 +254,8 @@ class Forms(Base):
         answers = {"digits4": "4821", "amount": "100", "text": "12 Gandhi Road", "pincode": "600001", "mobile": "9876543210"}
         for lang in LANG_CODES:
             for key, form in A.FORMS.items():
+                if form.get("internal"):
+                    continue
                 sid = self.start(lang)
                 self.a.message(sid, action="form:" + key)
                 if form["auth"]:

@@ -258,6 +258,36 @@ svg text { fill: var(--muted); font-size: 11px; }
 .mix-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) 28px; align-items: center; gap: 8px; }
 .mix-row b { text-align: right; font-weight: 500; }
 
+/* Appointments */
+.cat-RM { background: #4a6fa5; }
+.ap-grid { border-collapse: separate; border-spacing: 3px; width: 100%; }
+.ap-grid th { font-weight: 500; font-size: 12px; padding: 4px 6px; text-align: left; white-space: nowrap; }
+.ap-grid th span { display: block; font-weight: 400; font-size: 11px; }
+.ap-grid th.rowh { color: var(--muted); font-variant-numeric: tabular-nums; vertical-align: top; }
+.ap-grid td { background: var(--surface-2); border-radius: 5px; padding: 3px; min-width: 124px; height: 34px; vertical-align: top; }
+.ap-grid td.doubled { outline: 2px solid var(--amber); outline-offset: -2px; }
+.ap-pill {
+  display: flex; justify-content: space-between; gap: 6px; width: 100%; padding: 3px 6px; margin-bottom: 2px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 5px; background: var(--surface); font-size: 12px; text-align: left;
+}
+.ap-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-pill b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ap-pill.low { border-color: #cfe1de; background: var(--teal-soft); }
+.ap-pill.medium { border-color: #ecdcc2; background: var(--amber-soft); }
+.ap-pill.high { border-color: #ebcfcf; background: var(--red-soft); color: var(--red); }
+.ap-pill.past { color: var(--muted); }
+.ap-pill.sel { outline: 2px solid var(--accent); outline-offset: 0; }
+.ap-spare { display: block; font-size: 11px; color: var(--amber); padding: 0 6px; }
+.ap-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ap-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.ap-reasons { margin: 4px 0 10px; padding-left: 18px; }
+.ap-calls { list-style: none; margin: 0; padding: 0; }
+.ap-calls li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
+.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-align: left; }
+.ap-form { display: flex; flex-direction: column; gap: 8px; }
+.ap-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; }
+.ap-toggle input { width: auto; }
+
 /* Home */
 .brand { cursor: pointer; }
 body.locked .brand { cursor: default; }
