@@ -75,11 +75,27 @@ Book relationship managers and specialists, predict no-shows, and overbook caref
 
 The history is synthetic, so the model's accuracy says nothing about real customers. To use real data, replace `NoShowModel._generate_history()` in `backend/appointments.py`, then check accuracy and fairness across customer groups before relying on it. Two customers can still arrive for an overbooked slot, so branches should agree who is seen first and how the second is looked after.
 
-### Tests
+## Tests
 
 ```
-python -m unittest discover tests
+python tests/run.py                     # every suite, with a summary
+python tests/run.py smoke regression    # chosen suites
 ```
+
+No test dependencies are needed. The same command runs on Windows and Linux for every pull request and every push to `main` (`.github/workflows/tests.yml`).
+
+| Suite | Checks |
+|---|---|
+| **smoke** | A freshly started server: pages, files, main APIs, a token, and the kiosk in every language. |
+| **unit** | Assistant, no-show model, booking and overbooking rules. |
+| **regression** | Every bug fixed so far, plus the original queue and forecast behaviour. |
+| **integration** | Complete journeys over real HTTP across queue, kiosk and appointments, and parallel use. |
+| **nonfunctional** | Security, privacy, bad input, accessibility, localisation, reliability and compatibility. |
+| **performance** | Time budgets for a busy branch and load tests. Set `PERF_BUDGET_SCALE` to relax them on slower machines. |
+
+**Known gaps** in the summary are marked as expected failures: no staff login, anyone can reset the branch, and no rate limiting. Each one reports itself when fixed, so its marker can then be removed.
+
+The suites do not drive a real browser. Layout is not checked, and browser behaviour is checked by reading the source, so voice, the microphone and the look of each screen still need a person to try them.
 
 ## API
 

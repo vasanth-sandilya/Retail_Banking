@@ -11,6 +11,7 @@ import os
 import random
 import sys
 import threading
+import traceback
 from datetime import datetime, timedelta, date
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -75,6 +76,13 @@ DEFAULT_COUNTERS = [
 ]
 
 SLA_MINUTES = 15  # target max wait
+MAX_BODY_BYTES = 64 * 1024  # far more than any form needs
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -521,12 +529,26 @@ BOOK.seed_demo()
 ASSIST = Assistant(ENGINE, BOOK)
 
 
+class PayloadTooLarge(Exception):
+    pass
+
+
+class MitraServer(ThreadingHTTPServer):
+    daemon_threads = True
+    request_queue_size = 128  # the default of 5 drops connections when many kiosks poll at once
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=FRONTEND_DIR, **kw)
 
     def log_message(self, fmt, *args):
         pass  # keep console quiet
+
+    def end_headers(self):
+        for name, value in SECURITY_HEADERS.items():
+            self.send_header(name, value)
+        super().end_headers()
 
     def _json(self, obj, status=200):
         body = json.dumps(obj).encode()
@@ -538,10 +560,24 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def _body(self):
-        n = int(self.headers.get("Content-Length") or 0)
+        self.close_connection = True  # the body may be left unread if it is refused
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise ValueError("Invalid request") from None
+        if n < 0:
+            raise ValueError("Invalid request")
+        if n > MAX_BODY_BYTES:
+            raise PayloadTooLarge()
         if not n:
             return {}
-        return json.loads(self.rfile.read(n) or b"{}")
+        try:
+            body = json.loads(self.rfile.read(n))
+        except ValueError:
+            raise ValueError("Invalid request") from None
+        if not isinstance(body, dict):
+            raise ValueError("Invalid request")
+        return body
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -576,8 +612,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(BOOK.day_view(q["date"][0] if "date" in q else date.today().isoformat()))
             if p == "/api/appointments/slots":
                 return self._json({"slots": BOOK.available(q["type"][0], q["date"][0], q.get("segment", ["regular"])[0])})
-        except Exception as e:  # noqa: BLE001
+        except ValueError as e:
             return self._json({"error": str(e)}, 400)
+        except (TypeError, AttributeError, KeyError, IndexError):
+            return self._json({"error": "Invalid request"}, 400)
         if p.startswith("/api/"):
             return self._json({"error": "Not found"}, 404)
         return super().do_GET()
@@ -636,12 +674,17 @@ class Handler(SimpleHTTPRequestHandler):
                 ASSIST.__init__(ENGINE, BOOK)
                 return self._json({"ok": True})
             return self._json({"error": "Not found"}, 404)
+        except PayloadTooLarge:
+            return self._json({"error": "Request too large"}, 413)
         except ValueError as e:
             return self._json({"error": str(e)}, 400)
-        except Exception as e:  # noqa: BLE001
-            return self._json({"error": f"Server error: {e}"}, 500)
+        except (TypeError, AttributeError, KeyError, IndexError):
+            return self._json({"error": "Invalid request"}, 400)
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+            return self._json({"error": "Server error"}, 500)
 
 
 if __name__ == "__main__":
     print(f"Mitra running at http://localhost:{PORT}")
-    ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    MitraServer(("0.0.0.0", PORT), Handler).serve_forever()

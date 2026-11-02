@@ -4,12 +4,12 @@
   --surface-2: #f8f9fb;
   --border: #e2e5ea;
   --text: #1f2933;
-  --muted: #6b7684;
+  --muted: #5f6a78;
   --accent: #2f4f6f;       /* muted navy */
   --accent-soft: #e8eef4;
-  --teal: #3f7a73;
+  --teal: #37706a;
   --teal-soft: #e6f0ee;
-  --amber: #a8742a;
+  --amber: #8a5f1e;
   --amber-soft: #f7efe2;
   --red: #a54343;
   --red-soft: #f6e7e7;
@@ -69,7 +69,7 @@ h2 { font-size: 15px; font-weight: 600; margin: 0; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { background: #26425e; }
 .btn.teal { background: var(--teal); border-color: var(--teal); color: #fff; }
-.btn.teal:hover { background: #356862; }
+.btn.teal:hover { background: #2f625c; }
 .btn.ghost { background: transparent; }
 .btn.sm { padding: 4px 10px; font-size: 13px; }
 .btn.wide { width: 100%; padding: 11px; font-size: 15px; margin-top: 8px; }
