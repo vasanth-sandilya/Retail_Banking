@@ -17,8 +17,10 @@
     </div>
     <nav class="tabs" id="tabs">
       <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="assistant">Assistant</button>
       <button data-view="kiosk">Issue Token</button>
       <button data-view="counters">Counters</button>
+      <button data-view="requests">Requests</button>
       <button data-view="forecast">Footfall Forecast</button>
       <button data-view="display">Display Board</button>
     </nav>
@@ -56,6 +58,71 @@
             <div class="card-head"><h2>Activity</h2></div>
             <ul class="log" id="eventLog"></ul>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ASSISTANT -->
+    <section id="view-assistant" class="view">
+      <div class="section-head staff-only">
+        <h1>Branch assistant</h1>
+        <a class="btn ghost" href="/?mode=kiosk" target="_blank" rel="noopener">Open kiosk mode</a>
+      </div>
+      <div class="card as-start" id="asStart">
+        <h1 id="asChoose"></h1>
+        <p class="muted" id="asChooseAlt"></p>
+        <div class="lang-grid" id="asLangGrid"></div>
+      </div>
+      <div id="asChat" hidden>
+        <div class="as-bar">
+          <div class="lang-row" id="asLangRow"></div>
+          <div class="actions">
+            <button type="button" class="btn ghost" id="asVoice"></button>
+            <button type="button" class="btn ghost" id="asEnd"></button>
+          </div>
+        </div>
+        <div class="grid-2 assist">
+          <div class="card chat-card">
+            <div class="chat-log" id="asLog" aria-live="polite"></div>
+            <div class="quick-row" id="asActions"></div>
+            <form class="composer" id="asForm">
+              <button type="button" class="btn teal mic" id="asMic"><span id="asMicLabel"></span></button>
+              <input id="asInput" autocomplete="off" maxlength="500">
+              <button type="submit" class="btn primary" id="asSend"></button>
+            </form>
+            <p class="muted small as-note" id="asNote"></p>
+          </div>
+          <div class="card ticket-card" id="asSide"></div>
+        </div>
+      </div>
+      <div class="as-idle" id="asIdle" hidden>
+        <div class="card">
+          <p id="asIdleMsg"></p>
+          <button type="button" class="btn primary wide" id="asIdleBtn"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- REQUESTS -->
+    <section id="view-requests" class="view">
+      <div class="section-head">
+        <h1>Assistant requests and forms</h1>
+        <span class="muted small">Forms filled and service requests raised by customers at the kiosk.</span>
+      </div>
+      <div class="kpis" id="reqKpis"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>Requests and forms</h2><span class="muted small">Urgent items first</span></div>
+          <div class="table-wrap">
+            <table class="table" id="requestTable">
+              <thead><tr><th>Reference</th><th>Item</th><th>Language</th><th>Details</th><th>Token</th><th>Time</th><th>Status</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Language mix</h2><span class="muted small">Sessions by language</span></div>
+          <div id="langMix"></div>
         </div>
       </div>
     </section>
@@ -145,5 +212,6 @@
 
   <div class="toast" id="toast"></div>
   <script src="app.js"></script>
+  <script src="assistant.js"></script>
 </body>
 </html>

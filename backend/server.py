@@ -9,10 +9,14 @@ import json
 import math
 import os
 import random
+import sys
 import threading
 from datetime import datetime, timedelta, date
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # embeddable Python omits the script folder
+from assistant import Assistant, client_meta
 
 PORT = int(os.environ.get("PORT", 8000))
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
@@ -40,6 +44,7 @@ SERVICES = {
     "wealth":          {"name": "Investments & Wealth",    "category": "WEALTH", "prefix": "W", "avg_minutes": 30},
     "forex":           {"name": "Foreign Exchange",        "category": "FOREX",  "prefix": "F", "avg_minutes": 12},
     "locker":          {"name": "Safe Deposit Locker",     "category": "SERVICE","prefix": "S", "avg_minutes": 10},
+    "general_help":    {"name": "General Help",            "category": "SERVICE","prefix": "S", "avg_minutes": 5},
 }
 
 # Customer segments add priority points (higher = served earlier among routed queue)
@@ -49,6 +54,7 @@ SEGMENTS = {
     "disabled": {"name": "Differently Abled",   "priority": 40},
     "premium":  {"name": "Premium / Privilege", "priority": 25},
     "appointment": {"name": "Pre-booked Appointment", "priority": 35},
+    "urgent":   {"name": "Urgent (lost card)",  "priority": 50},  # set by the assistant, not offered at the token screen
 }
 
 # Counters with skill sets. A counter can serve any category in `skills`;
@@ -269,7 +275,7 @@ class QueueEngine:
         return best[2], best[1], reasons
 
     # -- public API ---------------------------------------------------------
-    def issue_token(self, service_key, segment="regular", name="", mobile=""):
+    def issue_token(self, service_key, segment="regular", name="", mobile="", language="", ref=""):
         if service_key not in SERVICES:
             raise ValueError("Unknown service")
         if segment not in SEGMENTS:
@@ -296,6 +302,8 @@ class QueueEngine:
                 "segment_name": SEGMENTS[segment]["name"],
                 "name": name.strip()[:40],
                 "mobile": mobile.strip()[-4:],  # store only last 4 digits
+                "language": language,           # customer's language, shown to staff
+                "ref": ref,                     # assistant form or request behind this token
                 "counter_id": counter["id"],
                 "counter_name": counter["name"],
                 "status": "waiting",
@@ -495,6 +503,7 @@ class QueueEngine:
 # ---------------------------------------------------------------------------
 MODEL = FootfallModel()
 ENGINE = QueueEngine(MODEL)
+ASSIST = Assistant(ENGINE)
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -544,6 +553,10 @@ class Handler(SimpleHTTPRequestHandler):
             if p.startswith("/api/token/"):
                 t = ENGINE.tokens.get(p.rsplit("/", 1)[-1].upper())
                 return self._json(t) if t else self._json({"error": "Token not found"}, 404)
+            if p == "/api/assist/meta":
+                return self._json(client_meta())
+            if p == "/api/requests":
+                return self._json(ASSIST.staff_view())
         except Exception as e:  # noqa: BLE001
             return self._json({"error": str(e)}, 400)
         if p.startswith("/api/"):
@@ -568,12 +581,25 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json(ENGINE.set_counter_status(cid, b.get("status")))
             if p == "/api/transfer":
                 return self._json(ENGINE.transfer(b.get("token", "").upper(), b.get("service")))
+            if p == "/api/assist/start":
+                return self._json(ASSIST.start(b.get("lang", "en")))
+            if p == "/api/assist/message":
+                return self._json(ASSIST.message(b.get("session", ""), b.get("text", ""), b.get("action", ""), b.get("lang", "en")))
+            if p == "/api/assist/secure":
+                return self._json(ASSIST.secure(b.get("session", ""), b.get("value", ""), b.get("lang", "en")))
+            if p == "/api/assist/reveal":
+                return self._json(ASSIST.reveal(b.get("session", ""), b.get("lang", "en")))
+            if p == "/api/assist/end":
+                return self._json(ASSIST.end(b.get("session", "")))
+            if p.startswith("/api/requests/"):
+                return self._json(ASSIST.set_status(p.strip("/").split("/")[2], b.get("status")))
             if p == "/api/demo":
                 ENGINE.seed_demo()
                 return self._json({"ok": True})
             if p == "/api/reset":
                 with ENGINE.lock:
                     ENGINE.__init__(MODEL)
+                ASSIST.__init__(ENGINE)
                 return self._json({"ok": True})
             return self._json({"error": "Not found"}, 404)
         except ValueError as e:
