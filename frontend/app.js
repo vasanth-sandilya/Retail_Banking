@@ -56,6 +56,11 @@ function showView(v) {
 // ---------------------------------------------------------------- polling
 async function refresh() {
   try {
+    if (currentView === "assistant") return;
+    if (currentView === "requests") {
+      await refreshRequests();
+      return;
+    }
     if (currentView === "display") {
       renderBoard(await api("/display"));
       return;
@@ -95,8 +100,8 @@ function renderDashboard() {
     return `<tr>
       <td class="tok">${t.token}</td>
       <td>${esc(t.name) || '<span class="muted">—</span>'}</td>
-      <td><span class="cat cat-${t.category}"></span>${esc(t.service_name)}</td>
-      <td><span class="chip ${pri ? "pri" : ""}">${esc(t.segment_name)}</span></td>
+      <td><span class="cat cat-${t.category}"></span>${esc(t.service_name)}${t.ref ? ` <span class="chip">${esc(t.ref)}</span>` : ""}</td>
+      <td><span class="chip ${pri ? "pri" : ""}">${esc(t.segment_name)}</span>${t.language ? ` <span class="chip">${esc(t.language)}</span>` : ""}</td>
       <td>${esc(t.counter_name)}</td>
       <td><span class="chip ${late ? "late" : ""}">${Math.round(t.waited)} min</span></td>
     </tr>`;
@@ -130,9 +135,10 @@ $("#btnReset").onclick = async () => {
 // ---------------------------------------------------------------- kiosk
 function renderKiosk() {
   $("#serviceGrid").innerHTML = Object.entries(META.services)
+    .filter(([key]) => key !== "general_help")
     .map(([key, s]) => `<button type="button" class="svc" data-key="${key}"><span class="n"><span class="cat cat-${s.category}"></span>${esc(s.name)}</span><span class="m">~${s.avg_minutes} min · ${s.category.toLowerCase()}</span></button>`)
     .join("");
-  $("#segment").innerHTML = Object.entries(META.segments).map(([k, s]) => `<option value="${k}">${esc(s.name)}</option>`).join("");
+  $("#segment").innerHTML = Object.entries(META.segments).filter(([k]) => k !== "urgent").map(([k, s]) => `<option value="${k}">${esc(s.name)}</option>`).join("");
 }
 $("#serviceGrid").addEventListener("click", (e) => {
   const b = e.target.closest(".svc");
@@ -187,7 +193,7 @@ function renderCounters() {
       </div>
       <div class="serving-box">
         ${cur
-          ? `<div class="muted small">Now serving</div><div class="tok">${cur.token}</div><div class="small">${esc(cur.service_name)}${cur.name ? " · " + esc(cur.name) : ""} <span class="chip ${cur.segment !== "regular" ? "pri" : ""}">${esc(cur.segment_name)}</span></div>`
+          ? `<div class="muted small">Now serving</div><div class="tok">${cur.token}</div><div class="small">${esc(cur.service_name)}${cur.name ? " · " + esc(cur.name) : ""} <span class="chip ${cur.segment !== "regular" ? "pri" : ""}">${esc(cur.segment_name)}</span>${cur.language ? ` <span class="chip">${esc(cur.language)}</span>` : ""}${cur.ref ? ` <span class="chip">${esc(cur.ref)}</span>` : ""}</div>`
           : `<div class="muted small">${open ? "Idle — ready for next customer" : "Not accepting customers"}</div>`}
       </div>
       <div class="counter-meta"><span>Queue: <b>${c.queue_len}</b></span><span>Backlog: <b>${c.backlog} min</b></span><span>Served: <b>${c.served}</b></span></div>
@@ -314,5 +320,10 @@ function renderBoard(d) {
   META = await api("/meta");
   $("#branchName").textContent = META.branch;
   renderKiosk();
+  // Customer-facing devices open /?mode=kiosk: assistant only, larger type, no staff tabs
+  if (new URLSearchParams(location.search).get("mode") === "kiosk") {
+    document.body.classList.add("kiosk");
+    showView("assistant");
+  }
   refresh();
 })();

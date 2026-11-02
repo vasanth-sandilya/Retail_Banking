@@ -27,6 +27,44 @@ On this PC Python is the portable build at `%LOCALAPPDATA%\Programs\Python\Pytho
 | **Dashboard** | Live KPIs, SLA breaches (15 min target), arrivals vs forecast for the current hour, staffing alerts, activity log. |
 | **Display board** | "Now serving" and "Up next" screen for the waiting hall. |
 
+## Branch assistant
+
+A voice and chat assistant for kiosks and tablets, bundled into the same server and look.
+
+- **Staff view:** the **Assistant** and **Requests** tabs at http://localhost:8000
+- **Customer devices:** open http://localhost:8000/?mode=kiosk (assistant only, larger touch targets, no staff tabs)
+
+| Area | What it does |
+|---|---|
+| **Languages** | English, Hindi, Tamil, Telugu, Kannada, Malayalam, Bengali, Marathi. Switches automatically when the customer types or speaks another script. All wording is in `backend/assistant_i18n.py`. |
+| **Voice** | Speech to text and text to speech through the browser's Web Speech API. If a device has no voice for a language, replies stay on screen rather than being read in the wrong language. |
+| **Balance** | Verified by registered mobile and one-time code on an on-screen keypad. The balance appears only after a tap, hides after 20 seconds, and is never spoken or written in the chat. |
+| **Forms** | Cash deposit slip, address update, account opening. Asks one field at a time, validates, shows a review screen, then issues a queue token linked to the form. |
+| **Service requests** | Lost card block (urgent), cheque book, statement, complaint. Each gets a reference the customer can track. |
+| **Queue link** | Tokens enter the same queue. Staff see the customer's language and form reference on the dashboard and counter console. |
+| **Privacy** | Card numbers, PINs and OTPs typed into chat are refused. Sessions are in memory and wiped on End session or after inactivity. |
+
+Demo logins (synthetic): mobile `9000000001` or `9000000002`. The one-time code is shown on screen because there is no SMS gateway; set `ASSIST_DEMO=0` to hide it.
+
+### Optional: Claude for intent matching
+
+The assistant runs on keywords with no dependencies. To also handle phrasing the keywords miss, run `pip install anthropic` and set `ANTHROPIC_API_KEY`. Claude only chooses an intent from a fixed list; it never writes customer-facing text. Digits are removed before the message is sent, and the model can be changed with `ASSIST_MODEL`.
+
+### Before using with real customers
+
+- **Connect real systems:** replace `CoreBanking` in `backend/assistant.py` and add an SMS gateway.
+- **Add staff authentication:** staff pages and `/api/*` have no login, and kiosk mode only hides the tabs. Keep this off untrusted networks until that exists.
+- **Use HTTPS:** browsers only allow the microphone on HTTPS or localhost.
+- **Review voice privacy:** Chrome's speech recognition sends audio to Google. Your compliance team should approve this or replace it with an on-premises engine.
+- **Have translations reviewed:** native speakers and the bank's compliance team should approve `assistant_i18n.py`.
+- **Install voices:** kiosk devices need a text-to-speech voice for each language offered.
+
+### Tests
+
+```
+python -m unittest discover tests
+```
+
 ## API
 
 - `GET /api/meta` · `GET /api/state` · `GET /api/display` · `GET /api/forecast?start=YYYY-MM-DD` · `GET /api/token/{no}`
