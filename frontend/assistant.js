@@ -133,6 +133,8 @@ function renderSide(side) {
     </div>`;
   } else if (side.type === "request") {
     el.innerHTML = `<div class="ticket" lang="${AS.lang}"><div class="t-label">${esc(ui("ref"))}</div><div class="t-no sm">${esc(side.ref)}</div><div class="t-counter">${esc(side.item)}</div></div>`;
+  } else if (side.type === "appointment") {
+    el.innerHTML = `<div class="ticket" lang="${AS.lang}"><div class="t-label">${esc(ui("appointment"))}</div><div class="t-no sm">${esc(side.ref)}</div><div class="t-counter">${esc(side.item)}</div><div class="muted">${esc(side.when)}</div></div>`;
   } else if (side.type === "review") {
     el.innerHTML = `<div class="review" lang="${AS.lang}"><h2>${esc(side.title)}</h2>
       ${side.rows.map((r) => `<div class="review-row"><div><span class="muted small">${esc(r.label)}</span><b>${esc(r.value)}</b></div><button type="button" class="btn sm ghost" data-action="edit:${esc(r.key)}">${esc(side.change)}</button></div>`).join("")}</div>`;
