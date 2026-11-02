@@ -1,4 +1,4 @@
-// BranchFlow front end – talks to the Python API in backend/server.py
+// Mitra front end – talks to the Python API in backend/server.py
 const API = "/api";
 let META = null;
 let STATE = null;

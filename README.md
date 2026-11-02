@@ -1,4 +1,6 @@
-# BranchFlow – Intelligent Branch Queue Management
+# Mitra – Intelligent Branch Queue Management and Assistant
+
+Mitra has two areas: **BranchFlow** for branch staff, and **Kiosk** for customers.
 
 HTML/JavaScript front end + Python back end (standard library only, no `pip install` needed).
 

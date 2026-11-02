@@ -1,5 +1,5 @@
 """
-BranchFlow Assist - multilingual conversational assistant for kiosks and tablets.
+Mitra assistant - multilingual conversational assistant for kiosks and tablets.
 
 Standard library only. Conversation logic is a deterministic state machine and
 every reply comes from assistant_i18n.py, so nothing is improvised at a bank
