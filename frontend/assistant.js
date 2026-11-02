@@ -16,7 +16,14 @@ async function initAssist() {
   $("#asChoose").textContent = AS.meta.ui.en.choose_lang;
   $("#asChooseAlt").innerHTML = AS.meta.languages.slice(1, 4).map((l) => `<span lang="${l.code}">${esc(AS.meta.ui[l.code].choose_lang)}</span>`).join(" · ");
   if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) $("#asMic").dataset.off = "1";
-  if ("speechSynthesis" in window) speechSynthesis.getVoices();
+  if ("speechSynthesis" in window) {
+    speechSynthesis.getVoices();
+    speechSynthesis.addEventListener("voiceschanged", () => {
+      if (!AS.unspoken || !AS.session) return;
+      $("#asNote").textContent = "";
+      speak(AS.unspoken);
+    });
+  }
 }
 
 // ---------------------------------------------------------------- conversation
@@ -186,15 +193,21 @@ function speak(text) {
   const voice = voices.find((v) => norm(v) === bcp47().toLowerCase()) || voices.find((v) => norm(v).split("-")[0] === AS.lang);
   if (!voice) {
     // Never read a regional language with a mismatched voice: it would be unintelligible.
-    if (speechSynthesis.getVoices().length) $("#asNote").textContent = ui("no_voice");
+    // Online voices load late, so keep the text and retry on voiceschanged.
+    AS.unspoken = text;
+    if (voices.length) $("#asNote").textContent = ui("no_voice");
     return;
   }
+  AS.unspoken = null;
   const u = new SpeechSynthesisUtterance(text);
   u.voice = voice;
   u.lang = voice.lang;
   speechSynthesis.speak(u);
 }
-function stopSpeech() { if ("speechSynthesis" in window) speechSynthesis.cancel(); }
+function stopSpeech() {
+  AS.unspoken = null;
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+}
 
 function toggleListening() {
   if (AS.listening) return stopListening();

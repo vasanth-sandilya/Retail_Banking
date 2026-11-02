@@ -57,7 +57,7 @@ The assistant runs on keywords with no dependencies. To also handle phrasing the
 - **Use HTTPS:** browsers only allow the microphone on HTTPS or localhost.
 - **Review voice privacy:** Chrome's speech recognition sends audio to Google. Your compliance team should approve this or replace it with an on-premises engine.
 - **Have translations reviewed:** native speakers and the bank's compliance team should approve `assistant_i18n.py`.
-- **Install voices:** kiosk devices need a text-to-speech voice for each language offered.
+- **Install voices:** kiosk devices need a text-to-speech voice for each language offered. On Windows, Microsoft Edge offers online voices, confirmed working for Tamil; these need an internet connection.
 
 ### Tests
 
