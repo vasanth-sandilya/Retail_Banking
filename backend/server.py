@@ -1,5 +1,5 @@
 """
-BranchFlow - Intelligent queue management for retail bank branches.
+Mitra - Intelligent queue management and multilingual assistance for retail bank branches.
 
 Pure Python standard library (no pip install needed). Run:
     python backend/server.py
@@ -609,5 +609,5 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"BranchFlow running at http://localhost:{PORT}")
+    print(f"Mitra running at http://localhost:{PORT}")
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

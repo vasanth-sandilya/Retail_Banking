@@ -1,4 +1,4 @@
-// BranchFlow Assist – voice and chat assistant. Shares api/esc/$/toast with app.js.
+// Mitra – voice and chat assistant. Shares api/esc/$/toast with app.js.
 const IDLE_MS = 60000;      // no touch for this long: ask if the customer is still there
 const IDLE_GRACE_MS = 20000; // then end the session, so the next customer sees nothing
 const BALANCE_SHOW_MS = 20000;
