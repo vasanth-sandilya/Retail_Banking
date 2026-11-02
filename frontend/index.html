@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BranchFlow Queue</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">BF</span>
+      <div>
+        <div class="brand-name">BranchFlow</div>
+        <div class="brand-sub" id="branchName">Branch queue management</div>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="kiosk">Issue Token</button>
+      <button data-view="counters">Counters</button>
+      <button data-view="forecast">Footfall Forecast</button>
+      <button data-view="display">Display Board</button>
+    </nav>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view active">
+      <div class="section-head">
+        <h1>Branch overview</h1>
+        <div class="actions">
+          <button class="btn ghost" id="btnDemo">Load demo customers</button>
+          <button class="btn ghost" id="btnReset">Reset day</button>
+        </div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div id="alerts"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>Waiting customers</h2><span class="muted small">Ordered by priority score (segment + time waited)</span></div>
+          <div class="table-wrap">
+            <table class="table" id="waitingTable">
+              <thead><tr><th>Token</th><th>Customer</th><th>Service</th><th>Segment</th><th>Routed to</th><th>Waited</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h2>This hour vs forecast</h2></div>
+            <div id="hourGauge"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Activity</h2></div>
+            <ul class="log" id="eventLog"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KIOSK -->
+    <section id="view-kiosk" class="view">
+      <div class="section-head"><h1>Issue a smart token</h1></div>
+      <div class="grid-2 kiosk">
+        <div class="card">
+          <form id="tokenForm">
+            <label class="lbl">What would you like to do today?</label>
+            <div class="service-grid" id="serviceGrid"></div>
+            <div class="row">
+              <div class="field">
+                <label class="lbl" for="segment">Customer type</label>
+                <select id="segment"></select>
+              </div>
+              <div class="field">
+                <label class="lbl" for="custName">Name (optional)</label>
+                <input id="custName" maxlength="40" placeholder="e.g. Anita">
+              </div>
+              <div class="field">
+                <label class="lbl" for="mobile">Mobile (optional)</label>
+                <input id="mobile" inputmode="numeric" maxlength="12" placeholder="For SMS alerts">
+              </div>
+            </div>
+            <button class="btn primary wide" type="submit">Get token</button>
+            <p class="err" id="tokenErr"></p>
+          </form>
+        </div>
+        <div class="card ticket-card" id="ticket">
+          <div class="ticket-empty">Select a service and press <b>Get token</b>.<br>The system routes the customer to the counter with the shortest expected wait that has the right skills.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COUNTERS -->
+    <section id="view-counters" class="view">
+      <div class="section-head">
+        <h1>Counter console</h1>
+        <span class="muted small">Staff call the next customer; idle counters pick up eligible customers from busier queues automatically.</span>
+      </div>
+      <div class="counter-grid" id="counterGrid"></div>
+    </section>
+
+    <!-- FORECAST -->
+    <section id="view-forecast" class="view">
+      <div class="section-head">
+        <h1>Footfall forecast</h1>
+        <div class="actions">
+          <button class="btn ghost" id="fcPrev">&larr; Previous week</button>
+          <button class="btn ghost" id="fcToday">This week</button>
+          <button class="btn ghost" id="fcNext">Next week &rarr;</button>
+        </div>
+      </div>
+      <p class="muted small" id="fcMethod"></p>
+      <div class="card">
+        <div class="card-head"><h2>Expected customers by hour and day</h2><span class="legend" id="fcLegend"></span></div>
+        <div class="table-wrap"><table class="heatmap" id="heatmap"></table></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2 id="dayChartTitle">Hourly forecast</h2><span class="muted small">Bar = expected · line = 80% range</span></div>
+          <div id="dayChart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Recommended staffing</h2><span class="muted small">Counters needed at 80% utilisation</span></div>
+          <div class="table-wrap"><table class="table" id="staffTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISPLAY BOARD -->
+    <section id="view-display" class="view">
+      <div class="board">
+        <div class="board-col">
+          <h2>Now serving</h2>
+          <div id="boardServing"></div>
+        </div>
+        <div class="board-col next">
+          <h2>Up next</h2>
+          <div id="boardNext"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
