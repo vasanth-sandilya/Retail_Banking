@@ -31,8 +31,8 @@ On this PC Python is the portable build at `%LOCALAPPDATA%\Programs\Python\Pytho
 
 A voice and chat assistant for kiosks and tablets, bundled into the same server and look.
 
-- **Staff view:** the **Assistant** and **Requests** tabs at http://localhost:8000
-- **Customer devices:** open http://localhost:8000/?mode=kiosk (assistant only, larger touch targets, no staff tabs)
+- **Home page:** http://localhost:8000 links to **BranchFlow** (staff screens) and **Kiosk** (the assistant)
+- **Customer devices:** open http://localhost:8000/?mode=kiosk (locked: assistant only, larger touch targets, no tabs or way back to the home page)
 
 | Area | What it does |
 |---|---|

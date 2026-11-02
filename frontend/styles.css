@@ -258,10 +258,34 @@ svg text { fill: var(--muted); font-size: 11px; }
 .mix-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) 28px; align-items: center; gap: 8px; }
 .mix-row b { text-align: right; font-weight: 500; }
 
-/* Kiosk mode: customer-facing, staff navigation removed */
+/* Home */
+.brand { cursor: pointer; }
+body.locked .brand { cursor: default; }
+.subtabs { flex: none; padding: 6px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.home-head { text-align: center; margin: 28px 0 20px; }
+.home-head h1 { font-size: 24px; }
+.home-head p { margin: 4px 0 0; }
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 920px; margin: 0 auto; }
+.home-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 22px; color: inherit; text-decoration: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  transition: border-color .15s, background .15s;
+}
+.home-card:hover { border-color: var(--accent); background: var(--surface-2); }
+.home-card:focus-visible { outline: 2px solid #b9c8d8; outline-offset: 1px; }
+.home-card h2 { font-size: 18px; }
+.home-card p, .home-card ul { margin: 0; }
+.home-card ul { padding-left: 18px; }
+.home-card .logo { width: 44px; height: 44px; font-size: 15px; }
+.home-card .logo.teal { background: var(--teal); }
+.home-go { margin-top: auto; padding-top: 6px; font-weight: 600; color: var(--accent); }
+.home-note { text-align: center; margin-top: 18px; }
+.home-note a { color: var(--accent); }
+
+/* Kiosk: customer-facing sizing. Locked mode also removes all navigation */
 body.kiosk { font-size: 17px; }
-body.kiosk .tabs, body.kiosk .staff-only { display: none; }
-body.kiosk .topbar { justify-content: space-between; }
+body.locked .tabs { display: none; }
+body.locked .topbar { justify-content: space-between; }
 body.kiosk .quick { padding: 12px 16px; }
 body.kiosk .btn { padding: 11px 16px; }
 body.kiosk .key { padding: 20px 4px; font-size: 22px; }
@@ -291,6 +315,8 @@ body.kiosk .lang-btn { padding: 26px 8px; font-size: 22px; }
   .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .row { grid-template-columns: 1fr; }
   .lang-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-grid { grid-template-columns: 1fr; }
+  .subtabs { padding: 6px 16px; }
   .composer { grid-template-columns: minmax(0, 1fr) auto; }
   .composer .mic { grid-column: 1 / -1; }
 }

@@ -2,7 +2,7 @@
 const API = "/api";
 let META = null;
 let STATE = null;
-let currentView = "dashboard";
+let currentView = "home";
 let selectedService = null;
 let fcStart = mondayOf(new Date());
 let fcData = null;
@@ -40,14 +40,30 @@ const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2
 const hourLabel = (h) => `${h > 12 ? h - 12 : h}${h >= 12 ? "pm" : "am"}`;
 
 // ---------------------------------------------------------------- navigation
-$("#tabs").addEventListener("click", (e) => {
+const STAFF_VIEWS = ["dashboard", "kiosk", "counters", "requests", "forecast", "display"];
+// Customer devices open /?mode=kiosk: assistant only, larger type, no navigation
+const LOCKED = new URLSearchParams(location.search).get("mode") === "kiosk";
+
+["#tabs", "#subtabs"].forEach((nav) => $(nav).addEventListener("click", (e) => {
   const b = e.target.closest("button[data-view]");
-  if (!b) return;
-  showView(b.dataset.view);
-});
+  if (b) location.hash = b.dataset.view;
+}));
+$(".brand").addEventListener("click", () => { if (!LOCKED) location.hash = "home"; });
+window.addEventListener("hashchange", routeFromHash);
+
+function routeFromHash() {
+  if (LOCKED) return;
+  const v = location.hash.slice(1);
+  showView($("#view-" + v) ? v : "home");
+}
 function showView(v) {
+  if (currentView === "assistant" && v !== "assistant") leaveAssistant();
   currentView = v;
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+  const staff = STAFF_VIEWS.includes(v);
+  document.body.classList.toggle("kiosk", v === "assistant");
+  $("#subtabs").hidden = !staff;
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === (staff ? "dashboard" : v)));
+  document.querySelectorAll("#subtabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("active", s.id === "view-" + v));
   if (v === "forecast" && !fcData) loadForecast();
   refresh();
@@ -66,6 +82,7 @@ async function refresh() {
       return;
     }
     STATE = await api("/state");
+    if (currentView === "home") renderHome();
     if (currentView === "dashboard") renderDashboard();
     // don't re-render while staff are picking from a transfer dropdown
     if (currentView === "counters" && !$("#counterGrid select:focus")) renderCounters();
@@ -75,6 +92,12 @@ async function refresh() {
 }
 setInterval(refresh, 3000);
 setInterval(() => ($("#clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })), 1000);
+
+// ---------------------------------------------------------------- home
+function renderHome() {
+  const k = STATE.kpi;
+  $("#homeStats").textContent = `${k.waiting} waiting · ${k.open_counters} of ${STATE.counters.length} counters open`;
+}
 
 // ---------------------------------------------------------------- dashboard
 function renderDashboard() {
@@ -319,11 +342,12 @@ function renderBoard(d) {
 (async function init() {
   META = await api("/meta");
   $("#branchName").textContent = META.branch;
+  $("#homeBranch").textContent = META.branch;
   renderKiosk();
-  // Customer-facing devices open /?mode=kiosk: assistant only, larger type, no staff tabs
-  if (new URLSearchParams(location.search).get("mode") === "kiosk") {
-    document.body.classList.add("kiosk");
+  if (LOCKED) {
+    document.body.classList.add("locked");
     showView("assistant");
+  } else {
+    routeFromHash();
   }
-  refresh();
 })();

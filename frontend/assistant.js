@@ -13,6 +13,7 @@ async function initAssist() {
   AS.meta = await api("/assist/meta");
   $("#asLangGrid").innerHTML = AS.meta.languages.map((l) => `<button type="button" class="lang-btn" data-lang="${l.code}" lang="${l.code}">${esc(l.name)}</button>`).join("");
   $("#asLangRow").innerHTML = AS.meta.languages.map((l) => `<button type="button" data-lang="${l.code}" lang="${l.code}">${esc(l.name)}</button>`).join("");
+  $("#homeLangs").innerHTML = AS.meta.languages.map((l) => `<span lang="${l.code}">${esc(l.name)}</span>`).join(" · ");
   $("#asChoose").textContent = AS.meta.ui.en.choose_lang;
   $("#asChooseAlt").innerHTML = AS.meta.languages.slice(1, 4).map((l) => `<span lang="${l.code}">${esc(AS.meta.ui[l.code].choose_lang)}</span>`).join(" · ");
   if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) $("#asMic").dataset.off = "1";
@@ -96,6 +97,12 @@ function resetAssist() {
   $("#asIdle").hidden = true;
   $("#asChat").hidden = true;
   $("#asStart").hidden = false;
+}
+
+// Moving away from the Kiosk tab ends the session, so nothing is left for the next person.
+function leaveAssistant() {
+  if (AS.session) api("/assist/end", { method: "POST", body: { session: AS.session } }).catch(() => {});
+  resetAssist();
 }
 
 async function endSession() {
