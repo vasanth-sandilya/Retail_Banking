@@ -6,7 +6,7 @@ import sys
 import time
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "backend"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "backend"))
 
 import assistant as A
 from assistant_i18n import KEYWORDS, LANG_CODES, SERVICE_KEYWORDS, T

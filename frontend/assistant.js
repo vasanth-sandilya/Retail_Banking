@@ -72,6 +72,7 @@ function addBubble(text, who) {
 
 function applyLabels() {
   $("#asInput").placeholder = ui("type");
+  $("#asInput").setAttribute("aria-label", ui("type"));
   $("#asSend").textContent = ui("send");
   $("#asMicLabel").textContent = AS.listening ? ui("listening") : ui("speak");
   $("#asVoice").textContent = AS.voice ? ui("voice_on") : ui("voice_off");
