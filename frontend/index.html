@@ -16,20 +16,59 @@
       </div>
     </div>
     <nav class="tabs" id="tabs">
-      <button data-view="dashboard" class="active">Dashboard</button>
-      <button data-view="assistant">Assistant</button>
-      <button data-view="kiosk">Issue Token</button>
-      <button data-view="counters">Counters</button>
-      <button data-view="requests">Requests</button>
-      <button data-view="forecast">Footfall Forecast</button>
-      <button data-view="display">Display Board</button>
+      <button data-view="home" class="active">Home</button>
+      <button data-view="dashboard">BranchFlow</button>
+      <button data-view="assistant">Kiosk</button>
     </nav>
     <div class="clock" id="clock">--:--</div>
   </header>
+  <nav class="tabs subtabs" id="subtabs" hidden>
+    <button data-view="dashboard">Dashboard</button>
+    <button data-view="kiosk">Issue Token</button>
+    <button data-view="counters">Counters</button>
+    <button data-view="requests">Requests</button>
+    <button data-view="forecast">Footfall Forecast</button>
+    <button data-view="display">Display Board</button>
+  </nav>
 
   <main>
+    <!-- HOME -->
+    <section id="view-home" class="view active">
+      <div class="home-head">
+        <h1>Welcome to <span id="homeBranch">the branch</span></h1>
+        <p class="muted">Where would you like to go?</p>
+      </div>
+      <div class="home-grid">
+        <a class="home-card" href="#dashboard">
+          <span class="logo">BF</span>
+          <h2>BranchFlow</h2>
+          <p class="muted">For branch staff. Run the queue and keep counters moving.</p>
+          <ul>
+            <li>Live dashboard and counter console</li>
+            <li>Customer requests and forms</li>
+            <li>Footfall forecast and display board</li>
+          </ul>
+          <span class="muted small" id="homeStats"></span>
+          <span class="home-go">Open BranchFlow &rarr;</span>
+        </a>
+        <a class="home-card" href="#assistant">
+          <span class="logo teal">KI</span>
+          <h2>Kiosk</h2>
+          <p class="muted">For customers. Voice and chat help in their own language.</p>
+          <ul>
+            <li>Balance queries</li>
+            <li>Guided form filling</li>
+            <li>Service requests and queue tokens</li>
+          </ul>
+          <span class="muted small" id="homeLangs"></span>
+          <span class="home-go">Open Kiosk &rarr;</span>
+        </a>
+      </div>
+      <p class="muted small home-note">Setting up a customer device? Use the <a href="/?mode=kiosk" target="_blank" rel="noopener">locked kiosk view</a>, which has no staff tabs or way back to this page.</p>
+    </section>
+
     <!-- DASHBOARD -->
-    <section id="view-dashboard" class="view active">
+    <section id="view-dashboard" class="view">
       <div class="section-head">
         <h1>Branch overview</h1>
         <div class="actions">
@@ -64,10 +103,6 @@
 
     <!-- ASSISTANT -->
     <section id="view-assistant" class="view">
-      <div class="section-head staff-only">
-        <h1>Branch assistant</h1>
-        <a class="btn ghost" href="/?mode=kiosk" target="_blank" rel="noopener">Open kiosk mode</a>
-      </div>
       <div class="card as-start" id="asStart">
         <h1 id="asChoose"></h1>
         <p class="muted" id="asChooseAlt"></p>
